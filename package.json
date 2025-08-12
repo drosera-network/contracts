@@ -1,0 +1,16 @@
+{
+  "name": "@drosera/contracts",
+  "description": "Smart contracts needed to create Traps for the Drosera network.",
+  "version": "2.0.0",
+  "bugs": "https://github.com/drosera-network/contracts/issues",
+  "keywords": [
+    "drosera",
+    "trap",
+    "ethereum"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/drosera-network/contracts.git"
+  }
+}
