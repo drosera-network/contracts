@@ -17,7 +17,18 @@ abstract contract Trap {
     /// @dev This function is intended to be overridden by derived contracts to implement specific response logic
     function shouldRespond(
         bytes[] calldata data
-    ) external pure virtual returns (bool, bytes memory);
+    ) external pure virtual returns (bool, bytes memory) {
+        return (false, abi.encode("No response"));
+    }
+
+
+    /// @notice Determines if an alert should be made based on the provided data.
+    /// @param data The data to evaluate for an alert.
+    /// @return A tuple containing a boolean indicating whether to alert and the alert data as bytes.
+    /// @dev This function is intended to be overridden by derived contracts to implement specific alert logic
+    function shouldAlert(bytes[] calldata data) external pure virtual returns (bool, bytes memory) {
+        return (false, abi.encode("No alert"));
+    }
 
 
     /// @notice Returns the event filters for the trap.
@@ -33,7 +44,7 @@ abstract contract Trap {
     /// @notice Returns the version of the Trap.
     /// @return The version as a string.
     function version() public pure returns (string memory) {
-        return "2.0";
+        return "2.1";
     }
 
     /// @notice Sets the event logs in the trap.
