@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {EventLog, EventFilter, EventFilterLib} from "./libraries/Events.sol";
 
 abstract contract Trap {
-    EventLog[] private eventLogs;
+    EventLog[][] private eventLogs;
 
     /// @notice Collects data from the trap.
     /// @return The collected data as a bytes array.
@@ -15,12 +15,9 @@ abstract contract Trap {
     /// @param data The data to evaluate for a response.
     /// @return A tuple containing a boolean indicating whether to respond and the response data as bytes.
     /// @dev This function is intended to be overridden by derived contracts to implement specific response logic
-    function shouldRespond(
-        bytes[] calldata data
-    ) external pure virtual returns (bool, bytes memory) {
+    function shouldRespond(bytes[] calldata data) external pure virtual returns (bool, bytes memory) {
         return (false, abi.encode("No response"));
     }
-
 
     /// @notice Determines if an alert should be made based on the provided data.
     /// @param data The data to evaluate for an alert.
@@ -29,7 +26,6 @@ abstract contract Trap {
     function shouldAlert(bytes[] calldata data) external pure virtual returns (bool, bytes memory) {
         return (false, abi.encode("No alert"));
     }
-
 
     /// @notice Returns the event filters for the trap.
     /// @return An array of EventFilter objects.
@@ -44,41 +40,68 @@ abstract contract Trap {
     /// @notice Returns the version of the Trap.
     /// @return The version as a string.
     function version() public pure returns (string memory) {
-        return "2.1";
+        return "3.0";
     }
 
-    /// @notice Sets the event logs in the trap.
-    /// @param logs An array of EventLog objects to set.
-    /// @dev This function should not be called. This function is designated to be used by the off-chain operator node.
-    function setEventLogs(EventLog[] calldata logs) public {
-       EventLog[] storage storageArray = eventLogs;
-      
-        // Set new logs
-        for (uint256 i = 0; i < logs.length; i++) {
-            storageArray.push(EventLog({
-                emitter: logs[i].emitter,
-                topics: logs[i].topics,
-                data: logs[i].data
-            }));
+    /// @notice Batch-update the collected event logs for all filters
+    /// @param logs A 2D array where logs[i] contains the new events for filter i
+    /// @dev This function is intended to be used by the off-chain operator node to set the event logs for the trap.
+    function setEventLogs(EventLog[][] calldata logs) external {
+        EventFilter[] memory filters = eventLogFilters();
+        require(logs.length == filters.length, "Logs length != filters length");
+
+        // Ensure outer array is exactly the right size
+        while (eventLogs.length < filters.length) {
+            eventLogs.push(); // adds a new empty inner array
+        }
+
+        for (uint256 i = 0; i < filters.length;) {
+            EventLog[] storage bucket = eventLogs[i];
+
+            // Append the new batch for this filter
+            EventLog[] calldata newBatch = logs[i];
+            uint256 len = newBatch.length;
+
+            for (uint256 j = 0; j < len;) {
+                bucket.push(newBatch[j]);
+                unchecked {
+                    ++j;
+                }
+            }
+
+            unchecked {
+                ++i;
+            }
         }
     }
 
     /// @notice Retrieves the event logs stored in the trap.
-    /// @return An array of EventLog objects containing the stored event logs.
-    /// @dev This function returns a copy of the event logs stored in the trap. It does not modify the state of the contract.
-    /// The logs can be used to analyze events emitted by other contracts that match the filters defined in `eventLogFilters`.
-    /// @dev It is intended to be called in the `collect` function to gather event logs for further processing.
-    function getEventLogs() public view returns (EventLog[] memory) {
-        EventLog[] storage storageArray = eventLogs;
-        EventLog[] memory logs = new EventLog[](storageArray.length);
+    /// @return logs matrix of EventLog objects containing the stored event logs.
+    /// @dev This function returns a copy of the event log matrix stored in the trap. It does not modify the state of the contract.
+    /// @dev The logs are returned in the same order as the filters were provided to the setEventLogs function.
+    function getEventLogs() public view returns (EventLog[][] memory logs) {
+        uint256 filterCount = eventLogFilters().length;
+        logs = new EventLog[][](filterCount);
 
-        for (uint256 i = 0; i < storageArray.length; i++) {
-            logs[i] = EventLog({
-                emitter: storageArray[i].emitter,
-                topics: storageArray[i].topics,
-                data: storageArray[i].data
-            });
+        uint256 actualLogsCount = eventLogs.length;
+
+        for (uint256 i = 0; i < filterCount;) {
+            if (i < actualLogsCount) {
+                EventLog[] storage storedLogs = eventLogs[i];
+                EventLog[] memory copy = new EventLog[](storedLogs.length);
+
+                for (uint256 j = 0; j < storedLogs.length;) {
+                    copy[j] = storedLogs[j];
+                    unchecked {
+                        ++j;
+                    }
+                }
+                logs[i] = copy;
+            }
+
+            unchecked {
+                ++i;
+            }
         }
-        return logs;
     }
 }

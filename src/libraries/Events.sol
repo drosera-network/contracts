@@ -2,6 +2,8 @@
 pragma solidity ^0.8.24;
 
 struct EventLog {
+    // The index of the log in the block.
+    uint256 logIndex;
     // The topics of the log, including the signature, if any.
     bytes32[] topics;
     // The raw data of the log.
@@ -56,7 +58,7 @@ library EventFilterLib {
     /// @param filter The EventFilter to match against.
     /// @param log The EventLog to check.
     /// @return True if the log matches the filter's signature and has a zero contract address, false otherwise.
-    function matches_signature(
+    function matchesSignature(
         EventFilter memory filter,
         EventLog memory log
     ) internal pure returns (bool) {
@@ -65,3 +67,4 @@ library EventFilterLib {
                filter.contractAddress == address(0);
     }
 }
+
